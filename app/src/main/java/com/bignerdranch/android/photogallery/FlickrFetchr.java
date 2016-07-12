@@ -23,6 +23,15 @@ public class FlickrFetchr {
 
     private static final String TAG = "FlickrFetchr";
     private static final String API_KEY = "d3a74ad7b3fc8af1397a3a2ef0e92c75";
+    private static final String FETCH_RECENTS_METHOD = "flickr.photos.getRecent";
+    private static final String SEARCH_METHOD = "flickr.photos.search";
+    private static final Uri ENDPOINT = Uri.parse("https://api.flickr.com/services/rest/").buildUpon()
+    .appendQueryParameter("method", "flickr.photos.getRecent")
+    .appendQueryParameter("api_key", API_KEY)
+    .appendQueryParameter("format", "json")
+    .appendQueryParameter("nojsoncallback", "1")
+    .appendQueryParameter("extras", "url_s")
+    .build();
 
     public byte[] getUrlBytes(String urlSpec) throws IOException
     {
@@ -55,17 +64,28 @@ public class FlickrFetchr {
         return new String(getUrlBytes(urlSpec));
     }
 
-    public List<GalleryItem> fetchItems()
+    public List<GalleryItem> fetchRecentPhotos(){
+        String url = builderUrl(FETCH_RECENTS_METHOD,null);
+        return downloadGalleryItems(url);
+    }
+
+    public List<GalleryItem> searchPhotos(String query){
+        String url = builderUrl(SEARCH_METHOD,query);
+        return downloadGalleryItems(url);
+    }
+
+    private String builderUrl(String method,String query){
+        Uri.Builder builder = ENDPOINT.buildUpon().appendQueryParameter("method",method);
+        if(method.equals(SEARCH_METHOD)){
+            builder.appendQueryParameter("text",query);
+        }
+        return builder.build().toString();
+    }
+
+    private List<GalleryItem> downloadGalleryItems(String url)
     {
         List<GalleryItem> items = new ArrayList<>();
         try {
-            String url = Uri.parse("https://api.flickr.com/services/rest/").buildUpon()
-                    .appendQueryParameter("method", "flickr.photos.getRecent")
-                    .appendQueryParameter("api_key", API_KEY)
-                    .appendQueryParameter("format", "json")
-                    .appendQueryParameter("nojsoncallback", "1")
-                    .appendQueryParameter("extras", "url_s")
-                    .build().toString();
             String jsonString = getUrlString(url);
             Log.i(TAG, "Received JSON: " + jsonString);
             JSONObject jsonBody = new JSONObject(jsonString);
@@ -97,6 +117,7 @@ public class FlickrFetchr {
             }
 
             item.setUrl(photoJsonObject.getString("url_s"));
+            item.setOwner(photoJsonObject.getString("owner"));
             items.add(item);
         }
     }
